@@ -1,0 +1,6 @@
+# notes.txt
+
+# I found a free commodities API (although it's very limited):
+https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/commodity-prices/records?select=date%2Ccommodity%2Cprice_index&where=commodity%3D%22Crude%20Oil%20petroleum%22%20and%20date%20%3E%20%222000-01%22&order_by=date&limit=100
+# I'm not sure how to get it to give me more granular details on oil... you can see the commodities it offers listed here:
+https://public.opendatasoft.com/explore/dataset/commodity-prices/table/
