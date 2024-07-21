@@ -55,7 +55,7 @@ def tradesize(commodities_dropdown):
     return 50
 commsize = tradesize(commodities_dropdown)
 
-data = yf.download(ticker, start='2019-08-05').round(2)
+data = yf.download(ticker, start='2017-10-30')
 data = data.drop(data.columns[4],axis=1)
 data1 = data.reset_index()
 stringg = data1['Date'].tolist()
@@ -91,31 +91,53 @@ def conf(conf_drop):
   elif conf_drop == '99%':
     return 2.33
 
-#HO size 42000, NG size 10000, CL size 1000, ES=F x50, RB size 42000
-data2['Perf%'] = data2['Close'].pct_change().round(4)
-data2['Rolling_Mean'] = data2['Perf%'].rolling(window=varlookback).mean().round(5)
-data2['Rolling_Variance'] = data2['Perf%'].rolling(window=varlookback).var().round(5)
-data2['Rolling_StdDev'] = data2['Rolling_Variance'].apply(np.sqrt).round(5)
-if varunits == 'Dollars ($)':
-    data2['PVaR'] = round(data2['Close'] * data2['Rolling_StdDev'] * conf(conf_drop) * abs(position) * commsize, 0)
-else:
-    data2['PVaR'] = round(data2['Rolling_StdDev'] * conf(conf_drop) * 100, 2)
-data2['MA'] = data2['Close'].rolling(window=200).mean().round(5)
+n = var_lkbk_dropdown
+def weightings(n):
+    if n == '10D':
+        x = .6579
+    elif n == '25D':
+        x = .8377
+    elif n == '50D':
+        x = .91366
+    elif n == '75D':
+        x = .9412
+    elif n == '150D':
+        x = .96996
+    elif n == '300D':
+        x = .9848
+    elif n == '600D':
+        x = .99236
+    return [round((1 - x) * (x ** i),5) for i in range(int(n[:-1]))]
+weights = weightings(n)
 
-data2 = data2.tail(993)
+if var_weight_dropdown == 'Equal WMA':
+  data2['Perf%'] = data2['Close'].pct_change().round(4)
+  data2['Rolling_StdDev'] = data2['Perf%'].rolling(window=varlookback).std().round(5)
+else:
+  data2['Perf%'] = data2['Close'].pct_change().round(4)
+  data2['Rolling_StdDev'] = data2['Perf%'].rolling(window=varlookback).std().round(5)
+
+#.apply(lambda x: weightedmean(x, weights))
+
+if varunits == 'Dollars ($)':
+  data2['PVaR'] = round(data2['Close'] * data2['Rolling_StdDev'] * conf(conf_drop) * abs(position) * commsize, 0)
+else: 
+  data2['PVaR'] = round(data2['Rolling_StdDev'] * conf(conf_drop) * 100, 2)
+
+data2['MA'] = data2['Close'].rolling(window=200).mean().round(5)
 
 def get_candlestick_plot(
         df: pd.DataFrame,
-        ticker: str
-):
+        ticker: str):
+    
     fig = make_subplots(
         rows = 2,
         cols = 1,
         shared_xaxes = True,
         vertical_spacing = .01,
         subplot_titles = (f'{ticker} Price', ''),
-        row_width = [.4, .8]
-    )
+        row_width = [.4, .8])
+    
     fig.add_trace(
         go.Candlestick(
             x = df['Date'],
@@ -126,34 +148,24 @@ def get_candlestick_plot(
             name = 'Candlestick chart'
         ),
         row = 1,
-        col = 1,
-    )
-
+        col = 1)
+    
     fig.add_trace(
           go.Scatter(x = df['Date'], y = df['MA'], name = '200 MA', line=dict(color='#FFFFFF', width=1)),
           row = 1,
-          col = 1,
-      )
-
-    # fig.add_trace(
-    #     go.Line(x = df['Date'], y = df['PVaR'], name = 'PVaR'),
-    #     row = 2,
-    #     col = 1,)
-
+          col = 1)
+    
     fig.add_trace(
         go.Scatter(x = df['Date'], y = df['PVaR'], name = 'PVaR', line=dict(color='#4a86e8', width=2)),
         row = 2,
-        col = 1,
-    )
-
+        col = 1)
+    
     fig['layout']['yaxis']['title'] = 'Price'
     fig['layout']['yaxis2']['title'] = 'VaR'
-
     fig.update_xaxes(
         rangebreaks = [{'bounds': ['sat', 'mon']}],
-        rangeslider_visible = False,
-    )
-
+        rangeslider_visible = False)
+    
     fig.data[0].increasing.fillcolor = '#4ca690'
     fig.data[0].increasing.line.color = '#4ca690'
     fig.data[0].decreasing.fillcolor = '#ef3b4a'
@@ -164,10 +176,10 @@ def get_candlestick_plot(
 if st.sidebar.button('Generate VaR'):
   with st.spinner("Calculating VaR..."): 
     time.sleep(1.8)
-  with st.spinner("Loading Figures..."): 
-    time.sleep(.8)
+  # with st.spinner("Loading Chart..."): 
+  #   time.sleep(.8)
 #random.uniform(1.8, 2.0)
 
   st.plotly_chart(
-    get_candlestick_plot(data2, ticker),
-    use_container_width = True,)
+    get_candlestick_plot(data2.tail(1047), ticker),
+    use_container_width = True)
